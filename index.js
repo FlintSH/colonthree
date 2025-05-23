@@ -133,8 +133,8 @@ discordClient.on("ready", async () => {
 
 discordClient.on("messageCreate", async (msg) => {
     if (msg.author.bot || (!msg.content && msg.attachments.size === 0) || msg.channelId !== config.channel) return;
-    for (let mention of message.mentions.users) {
-        msg.content = msg.content.replace(new RegExp(`/<@${mention[0]}>/g`), `@${mention[1].displayName}`);
+    for (let mention of msg.mentions.users) {
+        msg.content = msg.content.replace(new RegExp(`<@${mention[0]}>`, "g"), `@${mention[1].displayName}`);
     }
     if (msg.content.split("\n").length > 5 || msg.content.length > 1000) {
         const formData = new FormData();
