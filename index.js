@@ -133,7 +133,10 @@ discordClient.on("ready", async () => {
 
 discordClient.on("messageCreate", async (msg) => {
     if (msg.author.bot || (!msg.content && msg.attachments.size === 0) || msg.channelId !== config.channel) return;
-    else if (msg.content.split("\n").length > 5 || msg.content.length > 1000) {
+    for (let mention of message.mentions.users) {
+        msg.content = msg.content.replace(new RegExp(`/<@${mention[0]}>/g`), `@${mention[1].displayName}`);
+    }
+    if (msg.content.split("\n").length > 5 || msg.content.length > 1000) {
         const formData = new FormData();
         formData.append("file", new File([msg.content], `message-${msg.id}.txt`, { type: "text/plain" }));
         let response = await fetch("https://cdn.fl1nt.dev/api/files", {
