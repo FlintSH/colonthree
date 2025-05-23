@@ -1,0 +1,2 @@
+# colonthree
+this is the source code for the colonthree bot. it bridges the `#colonthree` channels on rizon and furnet to each other and to the [colonthree discord](https://discord.gg/4JH3PUPw9r). if you want to adapt it for your own use, it's licensed under 0BSD.
