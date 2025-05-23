@@ -136,7 +136,7 @@ discordClient.on("messageCreate", async (msg) => {
     for (let mention of msg.mentions.users) {
         msg.content = msg.content.replace(new RegExp(`<@${mention[0]}>`, "g"), `@${mention[1].displayName}`);
     }
-    if (msg.content.split("\n").length > 5 || msg.content.length > 1000) {
+    if (msg.content.split("\n").length > 1 || msg.content.length > 1000) {
         const formData = new FormData();
         formData.append("file", new File([msg.content], `message-${msg.id}.txt`, { type: "text/plain" }));
         let response = await fetch("https://cdn.fl1nt.dev/api/files", {
