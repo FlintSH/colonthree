@@ -121,6 +121,7 @@ const discordClient = new Client({
     intents: [
         GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
 		GatewayIntentBits.MessageContent
     ]
 });
@@ -131,8 +132,33 @@ discordClient.on("ready", async () => {
     discordReady = true;
 });
 
+discordClient.on("messageReactionAdd", async (reaction, reactor) => {
+    if (reaction.message.author.id === discordClient.user.id) {
+        let cnt = reaction.message.content.split("> ");
+        cnt[0] = cnt[0].split("<");
+        cnt[0].splice(0, 1);
+        cnt[0] = cnt[0].join("<");
+        let user = cnt.splice(0, 1);
+        cnt = cnt.join("> ");
+        emitter.emit("message", {
+            source: "Discord",
+            nick: reactor.displayName,
+            type: "action",
+            message: `reacted to ${user}'s message (${colors.gray(cnt.split(" ").slice(0, 5).join(" ") + (cnt.split(" ").length > 5 ? "..." : ""))}) with ${reaction.emoji.toString()}`
+        });
+    }
+    else {
+        emitter.emit("message", {
+            source: "Discord",
+            nick: reactor.displayName,
+            type: "action",
+            message: `reacted to ${reaction.message.author.displayName}'s message (${colors.gray(reaction.message.content.split(" ").slice(0, 5).join(" ") + (reaction.message.content.split(" ").length > 5 ? "..." : ""))}) with ${reaction.emoji.toString()}`
+        });
+    }
+});
+
 discordClient.on("messageCreate", async (msg) => {
-    if (msg.author.bot || (!msg.content && msg.attachments.size === 0) || msg.channelId !== config.channel) return;
+    if (msg.author.id === discordClient.user.id || (!msg.content && msg.attachments.size === 0) || msg.channelId !== config.channel) return;
     for (let mention of msg.mentions.users) {
         msg.content = msg.content.replace(new RegExp(`<@${mention[0]}>`, "g"), `@${mention[1].displayName}`);
     }
