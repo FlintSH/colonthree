@@ -165,6 +165,7 @@ discordClient.on("ready", async () => {
 });
 
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
+    reaction.message = reaction.message.fetch();
     if (reaction.message.channelId !== config.channel) return;
     else if (reaction.message.author.id === discordClient.user.id) {
         let cnt = reaction.message.content.split("> ");
