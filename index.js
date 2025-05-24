@@ -148,7 +148,7 @@ discordClient.on("messageCreate", async (msg) => {
             msg.content = `Reply to ${user} (${colors.gray(cnt.split(" ").slice(0, 5).join(" ") + (cnt.split(" ").length > 5 ? "..." : ""))}): ${msg.content}`;
         }
         else {
-            msg.content = `Reply to ${repliedMessage.author.displayName} (${colors.gray(repliedMessage.content.split(" ").slice(0, 5).join(" ") + (repliedMessage.content.split(" ").length > 5 ? "..." : ""))}): ${msg.content}`;
+            msg.content = `Reply to ${repliedMessage.author.displayName} (${colors.gray(repliedMessage.content ? (repliedMessage.content.split(" ").slice(0, 5).join(" ") + (repliedMessage.content.split(" ").length > 5 ? "..." : "")) : "Multimedia message")}): ${msg.content}`;
         }
     }
     if (msg.content.split("\n").length > 1 || msg.content.length > 500) {
