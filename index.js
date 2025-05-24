@@ -78,6 +78,14 @@ rizonBot.on("kick", (e) => {
         )})`,
     });
 });
+rizonBot.on("nick", (e) => {
+    emitter.emit("message", {
+        source: "Rizon",
+        type: "action",
+        nick: e.nick,
+        message: `is now ${colors.blue(e.new_nick)}`
+    });
+});
 
 const furnetBot = new irc.Client({
     nick: config.nick,
@@ -146,6 +154,14 @@ furnetBot.on("kick", (e) => {
         message: `was kicked from #colonthree by ${e.nick} (${colors.grey(
             e.message
         )})`,
+    });
+});
+furnetBot.on("nick", (e) => {
+    emitter.emit("message", {
+        source: "Furnet",
+        type: "action",
+        nick: e.nick,
+        message: `is now ${colors.blue(e.new_nick)}`
     });
 });
 
