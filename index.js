@@ -51,7 +51,7 @@ rizonBot.on("part", (e) => {
         source: "Rizon",
         type: "action",
         nick: e.nick,
-        message: `left #colonthree (${e.message})`
+        message: `left #colonthree (${colors.gray(e.message)})`
     });
 });
 rizonBot.on("kick", (e) => {
@@ -59,7 +59,7 @@ rizonBot.on("kick", (e) => {
         source: "Rizon",
         type: "action",
         nick: e.kicked,
-        message: `was kicked from #colonthree by ${e.nick} (${e.message})`
+        message: `was kicked from #colonthree by ${e.nick} (${colors.gray(e.message)})`
     });
 });
 
@@ -105,7 +105,7 @@ furnetBot.on("part", (e) => {
         source: "Furnet",
         type: "action",
         nick: e.nick,
-        message: `left #colonthree (${e.message})`
+        message: `left #colonthree (${colors.gray(e.message)})`
     });
 });
 furnetBot.on("kick", (e) => {
@@ -113,7 +113,7 @@ furnetBot.on("kick", (e) => {
         source: "Furnet",
         type: "action",
         nick: e.kicked,
-        message: `was kicked from #colonthree by ${e.nick} (${e.message})`
+        message: `was kicked from #colonthree by ${e.nick} (${colors.grey(e.message)})`
     });
 })
 
@@ -135,6 +135,21 @@ discordClient.on("messageCreate", async (msg) => {
     if (msg.author.bot || (!msg.content && msg.attachments.size === 0) || msg.channelId !== config.channel) return;
     for (let mention of msg.mentions.users) {
         msg.content = msg.content.replace(new RegExp(`<@${mention[0]}>`, "g"), `@${mention[1].displayName}`);
+    }
+    if (msg.type === 19 /* Reply */) {
+        let repliedMessage = await msg.fetchReference();
+        if (repliedMessage.author.id === discordClient.user.id) {
+            let cnt = repliedMessage.content.split("> ");
+            cnt[0] = cnt[0].split("<");
+            cnt[0].splice(0, 1);
+            cnt[0] = cnt[0].join("<");
+            let user = cnt.splice(0, 1);
+            cnt = cnt.join("> ");
+            msg.content = `Reply to ${user} (${colors.gray(cnt.split(" ").slice(0, 5).join(" ") + (cnt.split(" ").length > 5 ? "..." : ""))}): ${msg.content}`;
+        }
+        else {
+            msg.content = `Reply to ${repliedMessage.author.displayName} (${colors.gray(repliedMessage.content.split(" ").slice(0, 5).join(" ") + (repliedMessage.content.split(" ").length > 5 ? "..." : ""))}): ${msg.content}`;
+        }
     }
     if (msg.content.split("\n").length > 1 || msg.content.length > 500) {
         const formData = new FormData();
