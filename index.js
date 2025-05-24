@@ -60,6 +60,14 @@ rizonBot.on("part", (e) => {
         message: `left #colonthree (${colors.gray(e.message)})`,
     });
 });
+rizonBot.on("quit", (e) => {
+    emitter.emit("message", {
+        source: "Rizon",
+        type: "action",
+        nick: e.nick,
+        message: `quit${e.message ? ` (${colors.gray(e.message)})` : ""}`
+    });
+});
 rizonBot.on("kick", (e) => {
     emitter.emit("message", {
         source: "Rizon",
@@ -120,6 +128,14 @@ furnetBot.on("part", (e) => {
         type: "action",
         nick: e.nick,
         message: `left #colonthree (${colors.gray(e.message)})`,
+    });
+});
+furnetBot.on("quit", (e) => {
+    emitter.emit("message", {
+        source: "Furnet",
+        type: "action",
+        nick: e.nick,
+        message: `quit${e.message ? ` (${colors.gray(e.message)})` : ""}`
     });
 });
 furnetBot.on("kick", (e) => {
