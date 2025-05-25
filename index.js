@@ -217,6 +217,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
                 reaction.message.content
                     .replace(/\n/g, " ")
                     .split(" ")
+                    .filter(x => !!x)
                     .slice(0, 5)
                     .join(" ") +
                     (reaction.message.content.split(" ").length > 5
@@ -267,10 +268,11 @@ discordClient.on("messageCreate", async (msg) => {
                     ? repliedMessage.content
                           .replace(/\n/g, " ")
                           .split(" ")
+                          .filter(x => !!x)
                           .slice(0, 5)
                           .join(" ")
                           .slice(0, 50) +
-                          (repliedMessage.content.split(" ").length > 5 ||
+                          (repliedMessage.content.split(" ").filter(x => !!x).length > 5 ||
                           repliedMessage.content.length > 50
                               ? "..."
                               : "")
