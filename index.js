@@ -220,7 +220,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
                     .filter(x => !!x)
                     .slice(0, 5)
                     .join(" ") +
-                    (reaction.message.content.split(" ").length > 5
+                    (reaction.message.content.split(" ").filter(x => !!x).length > 5
                         ? "..."
                         : "")
             )}) with ${reaction.emoji.toString()}`,
