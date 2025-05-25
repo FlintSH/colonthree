@@ -214,8 +214,8 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
             message: `reacted to ${
                 reaction.message.member.displayName
             }'s message (${colors.gray(
-                reaction.message.cleanContent.split(" ").slice(0, 5).join(" ") +
-                    (reaction.message.cleanContent.split(" ").length > 5
+                reaction.message.content.split(" ").slice(0, 5).join(" ") +
+                    (reaction.message.content.split(" ").length > 5
                         ? "..."
                         : "")
             )}) with ${reaction.emoji.toString()}`,
