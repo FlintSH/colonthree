@@ -214,7 +214,11 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
             message: `reacted to ${
                 reaction.message.member.displayName
             }'s message (${colors.gray(
-                reaction.message.content.split(" ").slice(0, 5).join(" ") +
+                reaction.message.content
+                    .replace(/\n/g, " ")
+                    .split(" ")
+                    .slice(0, 5)
+                    .join(" ") +
                     (reaction.message.content.split(" ").length > 5
                         ? "..."
                         : "")
@@ -261,6 +265,7 @@ discordClient.on("messageCreate", async (msg) => {
             } (${colors.gray(
                 repliedMessage.content
                     ? repliedMessage.content
+                          .replace(/\n/g, " ")
                           .split(" ")
                           .slice(0, 5)
                           .join(" ")
@@ -277,9 +282,13 @@ discordClient.on("messageCreate", async (msg) => {
         const formData = new FormData();
         formData.append(
             "file",
-            new File([msg.content], `message-${msg.id}.txt`, {
-                type: "text/plain",
-            })
+            new File(
+                [colors.stripColorsAndStyle(msg.content)],
+                `message-${msg.id}.txt`,
+                {
+                    type: "text/plain",
+                }
+            )
         );
         let response = await fetch("https://cdn.fl1nt.dev/api/files", {
             method: "POST",
