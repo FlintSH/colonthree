@@ -182,7 +182,8 @@ discordClient.on("ready", async () => {
 
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
     if (reaction.message.channelId !== config.channel) return;
-    else if (reaction.message.author.id === discordClient.user.id) {
+    reactor = await reaction.message.guild.members.fetch(reactor.id);
+    if (reaction.message.author.id === discordClient.user.id) {
         let cnt = reaction.message.content.split("> ");
         cnt[0] = cnt[0].split("<");
         cnt[0].splice(0, 1);
@@ -249,7 +250,7 @@ discordClient.on("messageCreate", async (msg) => {
             )}): ${msg.content}`;
         } else {
             msg.content = `Reply to ${
-                repliedMessage.author.displayName
+                repliedMessage.member.displayName
             } (${colors.gray(
                 repliedMessage.content
                     ? repliedMessage.content
@@ -309,7 +310,7 @@ discordClient.on("messageCreate", async (msg) => {
     }
     emitter.emit("message", {
         source: "Discord",
-        nick: msg.author.displayName,
+        nick: msg.member.displayName,
         type: "privmsg",
         message: msg.content,
     });
