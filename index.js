@@ -65,7 +65,7 @@ rizonBot.on("quit", (e) => {
         source: "Rizon",
         type: "action",
         nick: e.nick,
-        message: `quit${e.message ? ` (${colors.gray(e.message)})` : ""}`
+        message: `quit${e.message ? ` (${colors.gray(e.message)})` : ""}`,
     });
 });
 rizonBot.on("kick", (e) => {
@@ -83,7 +83,7 @@ rizonBot.on("nick", (e) => {
         source: "Rizon",
         type: "action",
         nick: e.nick,
-        message: `is now ${colors.blue(e.new_nick)}`
+        message: `is now ${colors.blue(e.new_nick)}`,
     });
 });
 
@@ -143,7 +143,7 @@ furnetBot.on("quit", (e) => {
         source: "Furnet",
         type: "action",
         nick: e.nick,
-        message: `quit${e.message ? ` (${colors.gray(e.message)})` : ""}`
+        message: `quit${e.message ? ` (${colors.gray(e.message)})` : ""}`,
     });
 });
 furnetBot.on("kick", (e) => {
@@ -161,7 +161,7 @@ furnetBot.on("nick", (e) => {
         source: "Furnet",
         type: "action",
         nick: e.nick,
-        message: `is now ${colors.blue(e.new_nick)}`
+        message: `is now ${colors.blue(e.new_nick)}`,
     });
 });
 
@@ -230,6 +230,12 @@ discordClient.on("messageCreate", async (msg) => {
     }
     if (msg.type === 19 /* Reply */) {
         let repliedMessage = await msg.fetchReference();
+        for (let mention of repliedMessage.mentions.users) {
+            repliedMessage.content = repliedMessage.content.replace(
+                new RegExp(`<@${mention[0]}>`, "g"),
+                `@${mention[1].displayName}`
+            );
+        }
         if (repliedMessage.author.id === discordClient.user.id) {
             let cnt = repliedMessage.content.split("> ");
             cnt[0] = cnt[0].split("<");
