@@ -207,8 +207,8 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
             message: `reacted to ${
                 reaction.message.member.displayName
             }'s message (${colors.gray(
-                reaction.message.content.split(" ").slice(0, 5).join(" ") +
-                    (reaction.message.content.split(" ").length > 5
+                reaction.message.cleanContent.split(" ").slice(0, 5).join(" ") +
+                    (reaction.message.cleanContent.split(" ").length > 5
                         ? "..."
                         : "")
             )}) with ${reaction.emoji.toString()}`,
@@ -223,7 +223,7 @@ discordClient.on("messageCreate", async (msg) => {
         msg.channelId !== config.channel
     )
         return;
-    for (let mention of msg.mentions.users) {
+    for (let mention of msg.mentions.members) {
         msg.content = msg.content.replace(
             new RegExp(`<@${mention[0]}>`, "g"),
             `@${mention[1].displayName}`
@@ -231,7 +231,7 @@ discordClient.on("messageCreate", async (msg) => {
     }
     if (msg.type === 19 /* Reply */) {
         let repliedMessage = await msg.fetchReference();
-        for (let mention of repliedMessage.mentions.users) {
+        for (let mention of repliedMessage.mentions.members) {
             repliedMessage.content = repliedMessage.content.replace(
                 new RegExp(`<@${mention[0]}>`, "g"),
                 `@${mention[1].displayName}`
