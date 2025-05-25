@@ -183,6 +183,13 @@ discordClient.on("ready", async () => {
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
     if (reaction.message.channelId !== config.channel) return;
     reactor = await reaction.message.guild.members.fetch(reactor.id);
+    reaction.message = await reaction.message.fetch();
+    for (let mention of reaction.message.mentions.members) {
+        reaction.message.content = reaction.message.content.replace(
+            new RegExp(`<@${mention[0]}>`, "g"),
+            `@${mention[1].displayName}`
+        );
+    }
     if (reaction.message.author.id === discordClient.user.id) {
         let cnt = reaction.message.content.split("> ");
         cnt[0] = cnt[0].split("<");
