@@ -205,7 +205,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
             nick: reactor.displayName,
             type: "action",
             message: `reacted to ${
-                reaction.message.author.displayName
+                reaction.message.member.displayName
             }'s message (${colors.gray(
                 reaction.message.content.split(" ").slice(0, 5).join(" ") +
                     (reaction.message.content.split(" ").length > 5
