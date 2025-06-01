@@ -216,7 +216,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
             message: `reacted to ${
                 reaction.message.member.displayName
             }'s message (${colors.gray(
-                reaction.message.content
+                reaction.message.content ? reaction.message.content
                     .replace(/\n/g, " ")
                     .split(" ")
                     .filter(x => !!x)
@@ -224,7 +224,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
                     .join(" ") +
                     (reaction.message.content.split(" ").filter(x => !!x).length > 5
                         ? "..."
-                        : "")
+                        : "") : "Multimedia message"
             )}) with ${reaction.emoji.toString()}`,
         });
     }
