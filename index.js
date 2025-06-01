@@ -9,7 +9,6 @@ let rizonReady = false;
 let furnetReady = false;
 let discordReady = false;
 let channel;
-let channel2;
 
 const rizonBot = new irc.Client({
     nick: config.nick,
@@ -177,13 +176,12 @@ const discordClient = new Client({
 
 discordClient.on("ready", async () => {
     console.log("Discord connected");
-    channel = await discordClient.channels.fetch(config.channels[0]);
-    channel2 = await discordClient.channels.fetch(config.channels[1]);
+    channel = await discordClient.channels.fetch(config.channel);
     discordReady = true;
 });
 
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
-    if (config.channels.indexOf(reaction.message.channelId) === -1) return;
+    if (reaction.message.channelId !== config.channel) return;
     reactor = await reaction.message.guild.members.fetch(reactor.id);
     reaction.message = await reaction.message.fetch();
     for (let mention of reaction.message.mentions.members) {
@@ -200,7 +198,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
         let user = cnt.splice(0, 1);
         cnt = cnt.join("> ");
         emitter.emit("message", {
-            source: config.channels[0] === reaction.message.channelId ? "Discord" : "piggy play place",
+            source: "Discord",
             nick: reactor.displayName,
             type: "action",
             message: `reacted to ${user}'s message (${colors.gray(
@@ -210,7 +208,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
         });
     } else {
         emitter.emit("message", {
-            source: config.channels[0] === reaction.message.channelId ? "Discord" : "piggy play place",
+            source: "Discord",
             nick: reactor.displayName,
             type: "action",
             message: `reacted to ${
@@ -234,7 +232,7 @@ discordClient.on("messageCreate", async (msg) => {
     if (
         msg.author.id === discordClient.user.id ||
         (!msg.content && msg.attachments.size === 0) ||
-        config.channels.indexOf(msg.channelId) === -1
+        msg.channelId !== config.channel
     )
         return;
     for (let mention of msg.mentions.members) {
@@ -329,7 +327,7 @@ discordClient.on("messageCreate", async (msg) => {
             attachments.join(" / ");
     }
     emitter.emit("message", {
-        source: config.channels[0] === msg.channelId ? "Discord" : "piggy play place",
+        source: "Discord",
         nick: msg.member.displayName,
         type: "privmsg",
         message: msg.content,
@@ -353,13 +351,6 @@ emitter.on("message", (msg) => {
     );
     if (msg.source !== "Discord") {
         channel.send(
-            `[${msg.source}] ${
-                msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
-            } ${colors.stripColorsAndStyle(msg.message)}`
-        );
-    }
-    if (msg.source !== "piggy play place") {
-        channel2.send(
             `[${msg.source}] ${
                 msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
             } ${colors.stripColorsAndStyle(msg.message)}`
