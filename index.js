@@ -200,7 +200,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
         let user = cnt.splice(0, 1);
         cnt = cnt.join("> ");
         emitter.emit("message", {
-            source: config.channels[0] === reaction.message.channelId ? "Discord" : "piggy play place",
+            source: config.channels[0] === reaction.message.channelId ? "Discord" : "fl1nt.dev",
             nick: reactor.displayName,
             type: "action",
             message: `reacted to ${user}'s message (${colors.gray(
@@ -210,7 +210,7 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
         });
     } else {
         emitter.emit("message", {
-            source: config.channels[0] === reaction.message.channelId ? "Discord" : "piggy play place",
+            source: config.channels[0] === reaction.message.channelId ? "Discord" : "fl1nt.dev",
             nick: reactor.displayName,
             type: "action",
             message: `reacted to ${
@@ -329,7 +329,7 @@ discordClient.on("messageCreate", async (msg) => {
             attachments.join(" / ");
     }
     emitter.emit("message", {
-        source: config.channels[0] === msg.channelId ? "Discord" : "piggy play place",
+        source: config.channels[0] === msg.channelId ? "Discord" : "fl1nt.dev",
         nick: msg.member.displayName,
         type: "privmsg",
         message: msg.content,
@@ -358,7 +358,7 @@ emitter.on("message", (msg) => {
             } ${colors.stripColorsAndStyle(msg.message)}`
         );
     }
-    if (msg.source !== "piggy play place") {
+    if (msg.source !== "fl1nt.dev") {
         channel2.send(
             `[${msg.source}] ${
                 msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
