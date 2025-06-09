@@ -141,7 +141,7 @@ async function unblacklistGuild(guildId) {
 await initDatabase();
 
 async function stripEmojis(msg) {
-    let emojis = msg.match(/<a?:[A-Za-z0-9_]+:[0-9]+>/g);
+    let emojis = msg.match(/<a?:[A-Za-z0-9_]+:[0-9]+>/g) ?? [];
     for (const emoji of emojis) {
         const response = await fetch("https://cdn.fl1nt.dev/api/urls", {
             method: "POST",
@@ -676,10 +676,10 @@ discordClient.on("messageCreate", async (msg) => {
 
 discordClient.login(process.env.DISCORD_TOKEN);
 
-emitter.on("message", (msg) => {
+emitter.on("message", async (msg) => {
     if (!(rizonReady && discordReady && furnetReady)) return;
 
-    const emojiStrippedMessage = stripEmojis(msg.message);
+    const emojiStrippedMessage = await stripEmojis(msg.message);
 
     const client = [rizonBot, furnetBot].filter((x) => msg.source !== x.source);
     for (const c of client) {
