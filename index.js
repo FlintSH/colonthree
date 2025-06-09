@@ -184,24 +184,25 @@ discordClient.on("ready", async () => {
 
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
     if (config.channels.indexOf(reaction.message.channelId) === -1) return;
-    reactor = await reaction.message.guild.members.fetch(reactor.id);
-    reaction.message = await reaction.message.fetch();
-    for (let mention of reaction.message.mentions.members) {
-        reaction.message.content = reaction.message.content.replace(
+    const reactorMember = await reaction.message.guild.members.fetch(reactor.id);
+    const message = await reaction.message.fetch();
+    for (const mention of message.mentions.members) {
+        message.content = message.content.replace(
             new RegExp(`<@${mention[0]}>`, "g"),
             `@${mention[1].displayName}`
         );
     }
-    if (reaction.message.author.id === discordClient.user.id) {
-        let cnt = reaction.message.content.split("> ");
+    if (message.author.id === discordClient.user.id) {
+        let cnt = message.content.split("> ");
         cnt[0] = cnt[0].split("<");
         cnt[0].splice(0, 1);
         cnt[0] = cnt[0].join("<");
-        let user = cnt.splice(0, 1);
+        const user = cnt.splice(0, 1);
         cnt = cnt.join("> ");
         emitter.emit("message", {
-            source: config.channels[0] === reaction.message.channelId ? "Discord" : "fl1nt.dev",
-            nick: reactor.displayName,
+            source: message.guild.name,
+            channelId: message.channelId,
+            nick: reactorMember.displayName,
             type: "action",
             message: `reacted to ${user}'s message (${colors.gray(
                 cnt.split(" ").slice(0, 5).join(" ") +
@@ -210,19 +211,20 @@ discordClient.on("messageReactionAdd", async (reaction, reactor) => {
         });
     } else {
         emitter.emit("message", {
-            source: config.channels[0] === reaction.message.channelId ? "Discord" : "fl1nt.dev",
-            nick: reactor.displayName,
+            source: message.guild.name,
+            channelId: message.channelId,
+            nick: reactorMember.displayName,
             type: "action",
             message: `reacted to ${
-                reaction.message.member.displayName
+                message.member.displayName
             }'s message (${colors.gray(
-                reaction.message.content ? reaction.message.content
+                message.content ? message.content
                     .replace(/\n/g, " ")
                     .split(" ")
                     .filter(x => !!x)
                     .slice(0, 5)
                     .join(" ") +
-                    (reaction.message.content.split(" ").filter(x => !!x).length > 5
+                    (message.content.split(" ").filter(x => !!x).length > 5
                         ? "..."
                         : "") : "Multimedia message"
             )}) with ${reaction.emoji.toString()}`,
@@ -237,15 +239,15 @@ discordClient.on("messageCreate", async (msg) => {
         config.channels.indexOf(msg.channelId) === -1
     )
         return;
-    for (let mention of msg.mentions.members) {
+    for (const mention of msg.mentions.members) {
         msg.content = msg.content.replace(
             new RegExp(`<@${mention[0]}>`, "g"),
             `@${mention[1].displayName}`
         );
     }
     if (msg.type === 19 /* Reply */) {
-        let repliedMessage = await msg.fetchReference();
-        for (let mention of repliedMessage.mentions.members) {
+        const repliedMessage = await msg.fetchReference();
+        for (const mention of repliedMessage.mentions.members) {
             repliedMessage.content = repliedMessage.content.replace(
                 new RegExp(`<@${mention[0]}>`, "g"),
                 `@${mention[1].displayName}`
@@ -256,7 +258,7 @@ discordClient.on("messageCreate", async (msg) => {
             cnt[0] = cnt[0].split("<");
             cnt[0].splice(0, 1);
             cnt[0] = cnt[0].join("<");
-            let user = cnt.splice(0, 1);
+            const user = cnt.splice(0, 1);
             cnt = cnt.join("> ");
             msg.content = `Reply to ${user} (${colors.gray(
                 cnt.split(" ").slice(0, 5).join(" ") +
@@ -294,7 +296,7 @@ discordClient.on("messageCreate", async (msg) => {
                 }
             )
         );
-        let response = await fetch("https://cdn.fl1nt.dev/api/files", {
+        const response = await fetch("https://cdn.fl1nt.dev/api/files", {
             method: "POST",
             body: formData,
             headers: {
@@ -306,9 +308,9 @@ discordClient.on("messageCreate", async (msg) => {
     }
     if (msg.attachments.size > 0) {
         if (msg.content) msg.content += " / ";
-        let attachments = [];
-        for (let attachment of msg.attachments) {
-            let response = await fetch("https://cdn.fl1nt.dev/api/urls", {
+        const attachments = [];
+        for (const attachment of msg.attachments) {
+            const response = await fetch("https://cdn.fl1nt.dev/api/urls", {
                 method: "POST",
                 body: JSON.stringify({
                     url: attachment[1].url,
@@ -325,11 +327,11 @@ discordClient.on("messageCreate", async (msg) => {
             );
         }
         msg.content +=
-            `Attachment${attachments.length > 1 ? "s" : ""}: ` +
-            attachments.join(" / ");
+            `Attachment${attachments.length > 1 ? "s" : ""}: ${attachments.join(" / ")}`;
     }
     emitter.emit("message", {
-        source: config.channels[0] === msg.channelId ? "Discord" : "fl1nt.dev",
+        source: msg.guild.name,
+        channelId: msg.channelId,
         nick: msg.member.displayName,
         type: "privmsg",
         message: msg.content,
@@ -340,8 +342,8 @@ discordClient.login(config.token);
 
 emitter.on("message", (msg) => {
     if (!(rizonReady && discordReady && furnetReady)) return;
-    let client = [rizonBot, furnetBot].filter((x) => msg.source !== x.source);
-    client.forEach((c) =>
+    const client = [rizonBot, furnetBot].filter((x) => msg.source !== x.source);
+    for (const c of client) {
         c.say(
             "#colonthree",
             `[${colors.red(msg.source)}] ${
@@ -349,16 +351,16 @@ emitter.on("message", (msg) => {
                     ? `<${colors.blue(msg.nick)}>`
                     : `* ${colors.blue(msg.nick)}`
             } ${msg.message}`
-        )
-    );
-    if (msg.source !== "Discord") {
+        );
+    }
+    if (!msg.channelId || msg.channelId !== config.channels[0]) {
         channel.send(
             `[${msg.source}] ${
                 msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
             } ${colors.stripColorsAndStyle(msg.message)}`
         );
     }
-    if (msg.source !== "fl1nt.dev") {
+    if (!msg.channelId || msg.channelId !== config.channels[1]) {
         channel2.send(
             `[${msg.source}] ${
                 msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
