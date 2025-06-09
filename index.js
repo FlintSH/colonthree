@@ -157,7 +157,7 @@ async function stripEmojis(msg) {
                 "Content-Type": "application/json",
             },
         }).then((res) => res.json());
-        msg = msg.replace(emoji, `https://cdn.fl1nt.dev/u/response.data.shortCode`);
+        msg = msg.replace(emoji, `https://cdn.fl1nt.dev/u/${response.data.shortCode}`);
     }
     return msg;
 }
