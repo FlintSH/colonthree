@@ -9,6 +9,7 @@ const { Pool } = pkg;
 const emitter = new EventEmitter();
 let rizonReady = false;
 let furnetReady = false;
+let furnetNickTaken = false;
 let discordReady = false;
 
 const bridgeChannels = new Map();
@@ -122,7 +123,7 @@ const rizonBot = new irc.Client({
 rizonBot.source = "Rizon";
 rizonBot.connect();
 rizonBot.on("registered", () => {
-    if (rizonBot.nick === process.env.IRC_NICK) rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+    rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
 });
 rizonBot.on("message", (msg) => {
     if (
@@ -190,9 +191,12 @@ rizonBot.on("nick", (e) => {
 rizonBot.on("raw", (e) => {
     if (e.line.includes("Nickname is already in use.")) {
         rizonBot.changeNick(process.env.IRC_NICK + "_");
-        rizonBot.say("NickServ", `GHOST colonthree ${process.env.IRC_PASSWORD}`);
-        rizonBot.changeNick(process.env.IRC_NICK);
-        rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+        rizonBot.say("NickServ", `RECOVER colonthree ${process.env.IRC_PASSWORD}`);
+        rizonBot.say("NickServ", `RELEASE colonthree ${process.env.IRC_PASSWORD}`);
+        setTimeout(() => {
+            rizonBot.changeNick(process.env.IRC_NICK);
+            rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+        }, 5000);
     }
 });
 
@@ -207,8 +211,7 @@ const furnetBot = new irc.Client({
 furnetBot.source = "Furnet";
 furnetBot.connect();
 furnetBot.on("registered", () => {
-    if (furnetBot.nick === process.env.IRC_NICK) furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
-    furnetBot.raw("MODE", process.env.IRC_NICK, "+Bx");
+    if (!furnetNickTaken) furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
 });
 furnetBot.on("message", (msg) => {
     if (
@@ -275,9 +278,12 @@ furnetBot.on("nick", (e) => {
 });
 furnetBot.on("raw", (e) => {
     if (e.line.includes("Nickname is already in use.")) {
+        furnetNickTaken = true;
         furnetBot.changeNick(process.env.IRC_NICK + "_");
-        furnetBot.say("NickServ", `GHOST colonthree ${process.env.IRC_PASSWORD}`);
+        furnetBot.say("NickServ", `RECOVER colonthree ${process.env.IRC_PASSWORD}`);
+        furnetBot.say("NickServ", `RELEASE colonthree ${process.env.IRC_PASSWORD}`);
         furnetBot.changeNick(process.env.IRC_NICK);
+        furnetBot.raw("MODE", process.env.IRC_NICK, "+Bx");
         furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
     }
 });
