@@ -3,7 +3,6 @@ import irc from "irc-framework";
 import { EventEmitter } from "node:events";
 import { Client, GatewayIntentBits, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import pkg from "pg";
-import config from "./config.json" with { type: "json" };
 
 const { Pool } = pkg;
 
@@ -15,12 +14,7 @@ let discordReady = false;
 const bridgeChannels = new Map();
 
 const db = new Pool({
-    host: config.database.host,
-    port: config.database.port,
-    database: config.database.name,
-    user: config.database.user,
-    password: config.database.password,
-    ssl: config.database.ssl || false,
+    connectionString: process.env.DATABASE_URL,
 });
 
 async function initDatabase() {
@@ -73,17 +67,17 @@ async function saveBridgeChannel(guildId, channelId, guildName, channelName) {
 await initDatabase();
 
 const rizonBot = new irc.Client({
-    nick: config.nick,
-    username: config.user,
-    gecos: config.realname,
-    version: config.version,
+    nick: process.env.IRC_NICK,
+    username: process.env.IRC_USER,
+    gecos: process.env.IRC_REALNAME,
+    version: process.env.IRC_VERSION,
     host: "irc.rizon.net",
     port: 6667,
 });
 rizonBot.source = "Rizon";
 rizonBot.connect();
 rizonBot.on("registered", () => {
-    rizonBot.say("NickServ", `IDENTIFY ${config.password}`);
+    rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
 });
 rizonBot.on("message", (msg) => {
     if (
@@ -106,7 +100,7 @@ rizonBot.on("message", (msg) => {
     }
 });
 rizonBot.on("join", (e) => {
-    if (e.nick !== config.nick)
+    if (e.nick !== process.env.IRC_NICK)
         emitter.emit("message", {
             source: "Rizon",
             type: "action",
@@ -150,18 +144,18 @@ rizonBot.on("nick", (e) => {
 });
 
 const furnetBot = new irc.Client({
-    nick: config.nick,
-    username: config.user,
-    gecos: config.realname,
-    version: config.version,
+    nick: process.env.IRC_NICK,
+    username: process.env.IRC_USER,
+    gecos: process.env.IRC_REALNAME,
+    version: process.env.IRC_VERSION,
     host: "irc.furnet.org",
     port: 6667,
 });
 furnetBot.source = "Furnet";
 furnetBot.connect();
 furnetBot.on("registered", () => {
-    furnetBot.say("NickServ", `IDENTIFY ${config.password}`);
-    furnetBot.raw("MODE", config.nick, "+Bx");
+    furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+    furnetBot.raw("MODE", process.env.IRC_NICK, "+Bx");
 });
 furnetBot.on("message", (msg) => {
     if (
@@ -184,7 +178,7 @@ furnetBot.on("message", (msg) => {
     }
 });
 furnetBot.on("join", (e) => {
-    if (e.nick !== config.nick)
+    if (e.nick !== process.env.IRC_NICK)
         emitter.emit("message", {
             source: "Furnet",
             type: "action",
@@ -260,6 +254,8 @@ discordClient.on("interactionCreate", async (interaction) => {
         }
         
         try {
+            const hadPreviousChannel = bridgeChannels.has(interaction.guildId);
+            
             await saveBridgeChannel(
                 interaction.guildId, 
                 interaction.channelId, 
@@ -267,8 +263,12 @@ discordClient.on("interactionCreate", async (interaction) => {
                 interaction.channel.name
             );
             
+            const responseMessage = hadPreviousChannel 
+                ? `this channel has been set as the new bridge channel for **${interaction.guild.name}**, replacing the previous one. messages across the colonthree network will now be bridged to this channel instead.`
+                : `this channel has been set as the bridge channel for **${interaction.guild.name}**. yay :3. messages across the colonthree network will now be bridged to this channel.`;
+            
             await interaction.reply({ 
-                content: `this channel has been set as the bridge channel for **${interaction.guild.name}**. yay :3. messages across the colonthree network will now be bridged to this channel.`, 
+                content: responseMessage, 
                 ephemeral: true 
             });
         } catch (error) {
@@ -401,7 +401,7 @@ discordClient.on("messageCreate", async (msg) => {
             method: "POST",
             body: formData,
             headers: {
-                Authorization: `Bearer ${config.fileToken}`,
+                Authorization: `Bearer ${process.env.FLARE_TOKEN}`,
                 "X-File-Type": "text/plain",
             },
         }).then((res) => res.json());
@@ -417,7 +417,7 @@ discordClient.on("messageCreate", async (msg) => {
                     url: attachment[1].url,
                 }),
                 headers: {
-                    Authorization: `Bearer ${config.fileToken}`,
+                    Authorization: `Bearer ${process.env.FLARE_TOKEN}`,
                     "Content-Type": "application/json",
                 },
             }).then((res) => res.json());
@@ -439,7 +439,7 @@ discordClient.on("messageCreate", async (msg) => {
     });
 });
 
-discordClient.login(config.token);
+discordClient.login(process.env.DISCORD_TOKEN);
 
 emitter.on("message", (msg) => {
     if (!(rizonReady && discordReady && furnetReady)) return;
