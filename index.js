@@ -122,7 +122,7 @@ const rizonBot = new irc.Client({
 rizonBot.source = "Rizon";
 rizonBot.connect();
 rizonBot.on("registered", () => {
-    rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+    if (rizonBot.nick === "colonthree") rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
 });
 rizonBot.on("message", (msg) => {
     if (
@@ -187,6 +187,14 @@ rizonBot.on("nick", (e) => {
         message: `is now ${colors.blue(e.new_nick)}`,
     });
 });
+rizonBot.on("raw", (e) => {
+    if (e.line.includes("Nickname is already in use.")) {
+        rizonBot.changeNick("colonthree_");
+        rizonBot.say("NickServ", `GHOST colonthree ${process.env.IRC_PASSWORD}`);
+        rizonBot.changeNick("colonthree");
+        rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+    }
+});
 
 const furnetBot = new irc.Client({
     nick: process.env.IRC_NICK,
@@ -199,7 +207,7 @@ const furnetBot = new irc.Client({
 furnetBot.source = "Furnet";
 furnetBot.connect();
 furnetBot.on("registered", () => {
-    furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+    if (furnetBot.nick === "colonthree") furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
     furnetBot.raw("MODE", process.env.IRC_NICK, "+Bx");
 });
 furnetBot.on("message", (msg) => {
@@ -264,6 +272,14 @@ furnetBot.on("nick", (e) => {
         nick: e.nick,
         message: `is now ${colors.blue(e.new_nick)}`,
     });
+});
+furnetBot.on("raw", (e) => {
+    if (e.line.includes("Nickname is already in use.")) {
+        furnetBot.changeNick("colonthree_");
+        furnetBot.say("NickServ", `GHOST colonthree ${process.env.IRC_PASSWORD}`);
+        furnetBot.changeNick("colonthree");
+        furnetBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
+    }
 });
 
 const discordClient = new Client({
