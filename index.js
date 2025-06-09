@@ -1,15 +1,76 @@
 import colors from "irc-colors";
 import irc from "irc-framework";
 import { EventEmitter } from "node:events";
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import pkg from "pg";
 import config from "./config.json" with { type: "json" };
+
+const { Pool } = pkg;
 
 const emitter = new EventEmitter();
 let rizonReady = false;
 let furnetReady = false;
 let discordReady = false;
-let channel;
-let channel2;
+
+const bridgeChannels = new Map();
+
+const db = new Pool({
+    host: config.database.host,
+    port: config.database.port,
+    database: config.database.name,
+    user: config.database.user,
+    password: config.database.password,
+    ssl: config.database.ssl || false,
+});
+
+async function initDatabase() {
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS bridge_channels (
+                guild_id VARCHAR(20) PRIMARY KEY,
+                channel_id VARCHAR(20) NOT NULL,
+                guild_name VARCHAR(255),
+                channel_name VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        const result = await db.query('SELECT guild_id, channel_id FROM bridge_channels');
+        for (const row of result.rows) {
+            bridgeChannels.set(row.guild_id, row.channel_id);
+        }
+        
+        console.log(`Loaded ${result.rows.length} bridge channel(s) from database`);
+    } catch (error) {
+        console.error('Database initialization error:', error);
+        process.exit(1);
+    }
+}
+
+async function saveBridgeChannel(guildId, channelId, guildName, channelName) {
+    try {
+        await db.query(`
+            INSERT INTO bridge_channels (guild_id, channel_id, guild_name, channel_name, updated_at)
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            ON CONFLICT (guild_id) 
+            DO UPDATE SET 
+                channel_id = EXCLUDED.channel_id,
+                guild_name = EXCLUDED.guild_name,
+                channel_name = EXCLUDED.channel_name,
+                updated_at = CURRENT_TIMESTAMP
+        `, [guildId, channelId, guildName, channelName]);
+        
+        bridgeChannels.set(guildId, channelId);
+        
+        console.log(`Saved bridge channel for ${guildName}: #${channelName}`);
+    } catch (error) {
+        console.error('Error saving bridge channel:', error);
+        throw error;
+    }
+}
+
+await initDatabase();
 
 const rizonBot = new irc.Client({
     nick: config.nick,
@@ -177,13 +238,52 @@ const discordClient = new Client({
 
 discordClient.on("ready", async () => {
     console.log("Discord connected");
-    channel = await discordClient.channels.fetch(config.channels[0]);
-    channel2 = await discordClient.channels.fetch(config.channels[1]);
+    
+    const setChannelCommand = new SlashCommandBuilder()
+        .setName('setchannel')
+        .setDescription('Set this channel as the bridge channel for colonthree')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+    
+    await discordClient.application.commands.create(setChannelCommand);
+    console.log("Slash command registered");
+    
     discordReady = true;
 });
 
+discordClient.on("interactionCreate", async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+    
+    if (interaction.commandName === "setchannel") {
+        if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
+            await interaction.reply({ content: "You need administrator permissions to use this command.", ephemeral: true });
+            return;
+        }
+        
+        try {
+            await saveBridgeChannel(
+                interaction.guildId, 
+                interaction.channelId, 
+                interaction.guild.name, 
+                interaction.channel.name
+            );
+            
+            await interaction.reply({ 
+                content: `this channel has been set as the bridge channel for **${interaction.guild.name}**. yay :3. messages across the colonthree network will now be bridged to this channel.`, 
+                ephemeral: true 
+            });
+        } catch (error) {
+            console.error('Failed to save bridge channel:', error);
+            await interaction.reply({ 
+                content: "uh something went wrong. try again later.", 
+                ephemeral: true 
+            });
+        }
+    }
+});
+
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
-    if (config.channels.indexOf(reaction.message.channelId) === -1) return;
+    if (!bridgeChannels.has(reaction.message.guildId) || 
+        bridgeChannels.get(reaction.message.guildId) !== reaction.message.channelId) return;
     const reactorMember = await reaction.message.guild.members.fetch(reactor.id);
     const message = await reaction.message.fetch();
     for (const mention of message.mentions.members) {
@@ -236,7 +336,8 @@ discordClient.on("messageCreate", async (msg) => {
     if (
         msg.author.id === discordClient.user.id ||
         (!msg.content && msg.attachments.size === 0) ||
-        config.channels.indexOf(msg.channelId) === -1
+        !bridgeChannels.has(msg.guildId) ||
+        bridgeChannels.get(msg.guildId) !== msg.channelId
     )
         return;
     for (const mention of msg.mentions.members) {
@@ -342,6 +443,7 @@ discordClient.login(config.token);
 
 emitter.on("message", (msg) => {
     if (!(rizonReady && discordReady && furnetReady)) return;
+    
     const client = [rizonBot, furnetBot].filter((x) => msg.source !== x.source);
     for (const c of client) {
         c.say(
@@ -353,18 +455,19 @@ emitter.on("message", (msg) => {
             } ${msg.message}`
         );
     }
-    if (!msg.channelId || msg.channelId !== config.channels[0]) {
-        channel.send(
-            `[${msg.source}] ${
-                msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
-            } ${colors.stripColorsAndStyle(msg.message)}`
-        );
-    }
-    if (!msg.channelId || msg.channelId !== config.channels[1]) {
-        channel2.send(
-            `[${msg.source}] ${
-                msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
-            } ${colors.stripColorsAndStyle(msg.message)}`
-        );
+    
+    // send to all bridge channels in the network
+    for (const [guildId, channelId] of bridgeChannels) {
+        // obviously we don't want to send message back to the Discord channel it came from
+        if (msg.channelId && msg.channelId === channelId) continue;
+        
+        const channel = discordClient.channels.cache.get(channelId);
+        if (channel) {
+            channel.send(
+                `[${msg.source}] ${
+                    msg.type === "privmsg" ? `<${msg.nick}>` : `* ${msg.nick}`
+                } ${colors.stripColorsAndStyle(msg.message)}`
+            ).catch(console.error);
+        }
     }
 });

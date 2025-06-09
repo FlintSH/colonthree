@@ -1,2 +1,2 @@
 # colonthree
-this is the source code for the colonthree bot. it bridges the `#colonthree` channels on rizon and furnet to each other and to the [colonthree discord](https://discord.gg/4JH3PUPw9r). if you want to adapt it for your own use, it's licensed under 0BSD.
+this is the source code for the colonthree bot. colonthree is a community spread by bridging the `#colonthree` channels on rizon and furnet to each other and to any discord server. the hub server is here: [colonthree discord](https://discord.gg/4JH3PUPw9r). if you want to join the community, you can invite the colonthree bot to your discord server setup a channel with `/usechannel`. if you want to adapt it for your own use, it's licensed under 0BSD.
