@@ -245,14 +245,14 @@ rizonBot.on("raw", (e) => {
             "NickServ",
             `RECOVER colonthree ${process.env.IRC_PASSWORD}`
         );
-        rizonBot.say(
+        setTimeout(() => rizonBot.say(
             "NickServ",
             `RELEASE colonthree ${process.env.IRC_PASSWORD}`
-        );
+        ), 5000);
         setTimeout(() => {
             rizonBot.changeNick(process.env.IRC_NICK);
             rizonBot.say("NickServ", `IDENTIFY ${process.env.IRC_PASSWORD}`);
-        }, 5000);
+        }, 10000);
     }
 });
 
