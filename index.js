@@ -12,6 +12,7 @@ let furnetReady = false;
 let discordReady = false;
 
 const bridgeChannels = new Map();
+const blacklistedGuilds = new Set();
 
 const db = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -30,12 +31,28 @@ async function initDatabase() {
             )
         `);
         
-        const result = await db.query('SELECT guild_id, channel_id FROM bridge_channels');
-        for (const row of result.rows) {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS blacklisted_guilds (
+                guild_id VARCHAR(20) PRIMARY KEY,
+                guild_name VARCHAR(255),
+                blacklisted_by VARCHAR(20),
+                reason VARCHAR(500),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        const bridgeResult = await db.query('SELECT guild_id, channel_id FROM bridge_channels');
+        for (const row of bridgeResult.rows) {
             bridgeChannels.set(row.guild_id, row.channel_id);
         }
         
-        console.log(`Loaded ${result.rows.length} bridge channel(s) from database`);
+        const blacklistResult = await db.query('SELECT guild_id FROM blacklisted_guilds');
+        for (const row of blacklistResult.rows) {
+            blacklistedGuilds.add(row.guild_id);
+        }
+        
+        console.log(`Loaded ${bridgeResult.rows.length} bridge channel(s) from database`);
+        console.log(`Loaded ${blacklistResult.rows.length} blacklisted guild(s) from database`);
     } catch (error) {
         console.error('Database initialization error:', error);
         process.exit(1);
@@ -60,6 +77,34 @@ async function saveBridgeChannel(guildId, channelId, guildName, channelName) {
         console.log(`Saved bridge channel for ${guildName}: #${channelName}`);
     } catch (error) {
         console.error('Error saving bridge channel:', error);
+        throw error;
+    }
+}
+
+async function blacklistGuild(guildId, guildName, blacklistedBy, reason = null) {
+    try {
+        await db.query(`
+            INSERT INTO blacklisted_guilds (guild_id, guild_name, blacklisted_by, reason)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (guild_id) DO NOTHING
+        `, [guildId, guildName, blacklistedBy, reason]);
+        
+        blacklistedGuilds.add(guildId);
+        
+        console.log(`Blacklisted guild ${guildName} (${guildId}) by ${blacklistedBy}`);
+    } catch (error) {
+        console.error('Error blacklisting guild:', error);
+        throw error;
+    }
+}
+
+async function unblacklistGuild(guildId) {
+    try {
+        await db.query('DELETE FROM blacklisted_guilds WHERE guild_id = $1', [guildId]);
+        blacklistedGuilds.delete(guildId);
+        console.log(`Removed guild ${guildId} from blacklist`);
+    } catch (error) {
+        console.error('Error removing guild from blacklist:', error);
         throw error;
     }
 }
@@ -238,8 +283,29 @@ discordClient.on("ready", async () => {
         .setDescription('Set this channel as the bridge channel for colonthree')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
     
+    const blacklistCommand = new SlashCommandBuilder()
+        .setName('blacklist')
+        .setDescription('Blacklist or unblacklist a guild from the bridge')
+        .addStringOption(option =>
+            option.setName('action')
+                .setDescription('Action to perform')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'add', value: 'add' },
+                    { name: 'remove', value: 'remove' }
+                ))
+        .addStringOption(option =>
+            option.setName('guild_id')
+                .setDescription('Discord guild ID to blacklist/unblacklist')
+                .setRequired(true))
+        .addStringOption(option =>
+            option.setName('reason')
+                .setDescription('Reason for blacklisting (optional)')
+                .setRequired(false));
+    
     await discordClient.application.commands.create(setChannelCommand);
-    console.log("Slash command registered");
+    await discordClient.application.commands.create(blacklistCommand);
+    console.log("Slash commands registered");
     
     discordReady = true;
 });
@@ -249,7 +315,12 @@ discordClient.on("interactionCreate", async (interaction) => {
     
     if (interaction.commandName === "setchannel") {
         if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-            await interaction.reply({ content: "You need administrator permissions to use this command.", ephemeral: true });
+            await interaction.reply({ content: "you need admin to use this command.", ephemeral: true });
+            return;
+        }
+        
+        if (blacklistedGuilds.has(interaction.guildId)) {
+            await interaction.reply({ content: "this server is blacklisted from colonthree.", ephemeral: true });
             return;
         }
         
@@ -279,11 +350,54 @@ discordClient.on("interactionCreate", async (interaction) => {
             });
         }
     }
+    
+    if (interaction.commandName === "blacklist") {
+        const allowedUsers = ["884967775066550313", "844719224861097997"];
+        if (!allowedUsers.includes(interaction.user.id)) {
+            await interaction.reply({ content: "who do you think you are?? you can't use this command.", ephemeral: true });
+            return;
+        }
+        
+        const action = interaction.options.getString('action');
+        const guildId = interaction.options.getString('guild_id');
+        const reason = interaction.options.getString('reason');
+        
+        try {
+            if (action === 'add') {
+                let guildName = guildId;
+                try {
+                    const guild = await discordClient.guilds.fetch(guildId);
+                    guildName = guild.name;
+                } catch {
+                    // Guild not found, use ID as name
+                }
+                
+                await blacklistGuild(guildId, guildName, interaction.user.id, reason);
+                await interaction.reply({ 
+                    content: `discord server ${guildName} (${guildId}) has been blacklisted from the bridge.`, 
+                    ephemeral: true 
+                });
+            } else if (action === 'remove') {
+                await unblacklistGuild(guildId);
+                await interaction.reply({ 
+                    content: `discord server ${guildId} has been removed from the blacklist.`, 
+                    ephemeral: true 
+                });
+            }
+        } catch (error) {
+            console.error('Failed to update blacklist:', error);
+            await interaction.reply({ 
+                content: "didnt work. try again later.", 
+                ephemeral: true 
+            });
+        }
+    }
 });
 
 discordClient.on("messageReactionAdd", async (reaction, reactor) => {
     if (!bridgeChannels.has(reaction.message.guildId) || 
-        bridgeChannels.get(reaction.message.guildId) !== reaction.message.channelId) return;
+        bridgeChannels.get(reaction.message.guildId) !== reaction.message.channelId ||
+        blacklistedGuilds.has(reaction.message.guildId)) return;
     const reactorMember = await reaction.message.guild.members.fetch(reactor.id);
     const message = await reaction.message.fetch();
     for (const mention of message.mentions.members) {
@@ -337,7 +451,8 @@ discordClient.on("messageCreate", async (msg) => {
         msg.author.id === discordClient.user.id ||
         (!msg.content && msg.attachments.size === 0) ||
         !bridgeChannels.has(msg.guildId) ||
-        bridgeChannels.get(msg.guildId) !== msg.channelId
+        bridgeChannels.get(msg.guildId) !== msg.channelId ||
+        blacklistedGuilds.has(msg.guildId)
     )
         return;
     for (const mention of msg.mentions.members) {
@@ -460,6 +575,8 @@ emitter.on("message", (msg) => {
     for (const [guildId, channelId] of bridgeChannels) {
         // obviously we don't want to send message back to the Discord channel it came from
         if (msg.channelId && msg.channelId === channelId) continue;
+        
+        if (blacklistedGuilds.has(guildId)) continue;
         
         const channel = discordClient.channels.cache.get(channelId);
         if (channel) {
