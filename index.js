@@ -168,7 +168,9 @@ const rizonBot = new irc.Client({
     gecos: process.env.IRC_REALNAME,
     version: process.env.IRC_VERSION,
     host: "irc.rizon.net",
-    port: 6667,
+    port: 6697,
+    tls: true,
+    rejectUnauthorized: true,
 });
 rizonBot.source = "Rizon";
 rizonBot.connect();
@@ -261,8 +263,10 @@ const furnetBot = new irc.Client({
     username: process.env.IRC_USER,
     gecos: process.env.IRC_REALNAME,
     version: process.env.IRC_VERSION,
-    host: "irc.furnet.org",
-    port: 6667,
+    host: "panther.furnet.org",
+    port: 6697,
+    tls: true,
+    rejectUnauthorized: true,
 });
 furnetBot.source = "Furnet";
 furnetBot.connect();
